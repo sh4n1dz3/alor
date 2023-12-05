@@ -228,12 +228,16 @@ class AlorPy:
             params['exchange'] = exchange
         return self.check_result(get(url=f'{self.api_server}/md/v2/Securities', params=params, headers=self.get_headers()))
 
-    def get_securities_exchange(self, exchange):
+    def get_securities_exchange(self, exchange, market=None):
         """Получение информации о торговых инструментах на выбранной бирже
 
         :param str exchange: Биржа 'MOEX' или 'SPBX'
+        :param str market: Рынок на бирже 'FORTS', 'FOND', 'CURR' или 'SPBX'
         """
-        return self.check_result(get(url=f'{self.api_server}/md/v2/Securities/{exchange}', headers=self.get_headers()))
+        params = {}
+        if market:
+            params["market"] = market
+        return self.check_result(get(url=f'{self.api_server}/md/v2/Securities/{exchange}', params=params, headers=self.get_headers()))
 
     def get_symbol(self, exchange, symbol):
         """Получение информации о выбранном финансовом инструменте
@@ -316,6 +320,10 @@ class AlorPy:
         :param str symbol: Тикер
         """
         return self.check_result(get(url=f'{self.api_server}/md/v2/Securities/{exchange}/{symbol}/actualFuturesQuote', headers=self.get_headers()))
+    
+    def get_risk(self, exchange, portfolio):
+        params = {}
+        return self.check_result(get(url=f'{self.api_server}/md/v2/Clients/{exchange}/{portfolio}/risk', params=params, headers=self.get_headers()))
 
     def get_risk_rates(self, exchange, ticker=None, risk_category_id=None, search=None):
         """Запрос ставок риска
@@ -373,7 +381,7 @@ class AlorPy:
         j = {'side': side, 'type': 'market', 'quantity': abs(quantity), 'instrument': {'symbol': symbol, 'exchange': exchange}, 'user': {'portfolio': portfolio}}
         return self.check_result(post(url=f'{self.api_server}/commandapi/warptrans/TRADE/v2/client/orders/actions/market', headers=headers, json=j))
 
-    def create_limit_order(self, portfolio, exchange, symbol, side, quantity, limit_price, time_in_force='GoodTillCancelled', iceberg_fixed=None, iceberg_variance=None):
+    def create_limit_order(self, portfolio, exchange, symbol, side, quantity, limit_price, time_in_force='GoodTillCancelled', comment=None, iceberg_fixed=None, iceberg_variance=None):
         """Создание лимитной заявки
 
         :param str portfolio: Идентификатор клиентского портфеля
@@ -383,12 +391,15 @@ class AlorPy:
         :param int quantity: Кол-во в лотах
         :param float limit_price: Лимитная цена
         :param str time_in_force: 'OneDay' - До конца дня, 'ImmediateOrCancel' - Снять остаток, 'FillOrKill' - Исполнить целиком или отклонить, 'GoodTillCancelled' - Активна до отмены
+        :params str comment: Пользовательский комментарий к заявке
         :param int iceberg_fixed: Видимая постоянная часть айсберг-заявки в лотах
         :param int iceberg_variance: Амплитуда отклонения (в % от icebergFixed) случайной надбавки к видимой части айсберг-заявки. Только срочный рынок
         """
         headers = self.get_headers()
         headers['X-ALOR-REQID'] = f'{portfolio};{self.get_request_id()}'  # Портфель с уникальным идентификатором запроса
         j = {'side': side, 'type': 'limit', 'quantity': abs(quantity), 'price': limit_price, 'instrument': {'symbol': symbol, 'exchange': exchange}, 'user': {'portfolio': portfolio}, 'timeInForce': time_in_force}
+        if comment:
+            j['comment'] = comment
         if iceberg_fixed:
             j['icebergFixed'] = iceberg_fixed
         if iceberg_variance:
